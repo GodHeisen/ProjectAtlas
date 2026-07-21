@@ -7,9 +7,10 @@ from app.core.config import Settings
 from app.core.logger import get_logger
 from app.models.project import ProjectInput, ProjectResult
 from app.services.export_service import ExportService
-from app.services.llm_service import LLMService
+from app.services.llm_factory import LLMFactory
+from app.services.llm_service import LLMServiceInterface
 from app.services.prompt_service import PromptService
-from app.services.search_service import NoOpSearchService, SearchServiceInterface
+from app.services.search_service import SearchServiceInterface, WebSearchService
 from app.services.storage_service import StorageService
 
 logger = get_logger(__name__)
@@ -24,14 +25,14 @@ class Phase1Pipeline:
         storage: StorageService | None = None,
         prompt_service: PromptService | None = None,
         search_service: SearchServiceInterface | None = None,
-        llm_service: LLMService | None = None,
+        llm_service: LLMServiceInterface | None = None,
         export_service: ExportService | None = None,
     ) -> None:
         self._settings = settings
         self._storage = storage or StorageService(settings)
         self._prompts = prompt_service or PromptService()
-        self._search = search_service or NoOpSearchService()
-        self._llm = llm_service or LLMService(settings)
+        self._search = search_service or WebSearchService(settings)
+        self._llm = llm_service or LLMFactory.create(settings)
         self._export = export_service or ExportService()
 
         self._research = ResearchAgent(
@@ -70,8 +71,9 @@ class Phase1Pipeline:
             research_dir=project_dir / "research",
             script_dir=project_dir / "script",
             notes=[
-                "Phase 1 scaffold complete.",
-                "Search service not connected — no external facts fabricated.",
+                "Phase 1 complete.",
+                f"Search provider: {getattr(self._search, 'provider', self._search.__class__.__name__)}",
+                f"LLM provider: {self._settings.llm_provider or 'openai'}",
             ],
         )
         self._export.write_manifest(result)

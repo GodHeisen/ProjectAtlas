@@ -23,5 +23,19 @@ Rules:
 - If no supplied source supports a decision, use unverified with confidence 0.0 and an
   empty source_refs list.
 
-Return valid JSON only, with a top-level `decisions` array. Do not use Markdown
-fences or commentary.
+Return valid JSON only. Do not use Markdown fences or add commentary. The response
+MUST be a single JSON object with a top-level "decisions" array — never a bare array,
+and never a decisions object keyed by claim_id. Use this exact shape, with one entry
+per supplied claim:
+
+{
+  "decisions": [
+    {
+      "claim_id": "claim-1",
+      "status": "reported",
+      "confidence": 0.4,
+      "source_refs": ["source-1"],
+      "rationale": ""
+    }
+  ]
+}

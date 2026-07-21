@@ -71,7 +71,7 @@ class FactCheckAgent(BaseAgent):
                 self._prompts.load("factcheck"),
                 self._build_fact_check_input(package),
             )
-            extraction = _FactCheckExtraction.model_validate_json(self._strip_json_fence(response))
+            extraction = self._parse_extraction(response)
         except (json.JSONDecodeError, LLMError, ValidationError, ValueError) as exc:
             self.logger.warning("Fact-check extraction was unusable: %s", exc)
             return {}
@@ -82,6 +82,22 @@ class FactCheckAgent(BaseAgent):
             for decision in extraction.decisions
             if decision.claim_id in known_claim_ids
         }
+
+    @classmethod
+    def _parse_extraction(cls, response: str) -> _FactCheckExtraction:
+        """Parse the fact-check response, tolerating a bare decisions array.
+
+        The prompt asks for a top-level ``{"decisions": [...]}`` object, but a
+        smaller/local model can still collapse that to a bare array. Atlas
+        accepts either shape rather than discarding an otherwise usable
+        response — the schema itself (a list of decisions) hasn't changed,
+        only how loosely it may be wrapped.
+        """
+        cleaned = cls._strip_json_fence(response)
+        payload = json.loads(cleaned)
+        if isinstance(payload, list):
+            payload = {"decisions": payload}
+        return _FactCheckExtraction.model_validate(payload)
 
     @staticmethod
     def _build_fact_check_input(package: ResearchPackage) -> str:

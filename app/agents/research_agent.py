@@ -52,6 +52,12 @@ class ResearchAgent(BaseAgent):
 
     name = "research"
 
+    # Richer research needs more raw material to decompose into atomic,
+    # source-cited claims. 20 results (vs. the search service's own default
+    # of 10) gives the extraction prompt enough breadth across sources to
+    # reach a substantial claim count for well-documented topics.
+    _SEARCH_RESULT_LIMIT = 20
+
     def __init__(
         self,
         storage: StorageService,
@@ -70,7 +76,7 @@ class ResearchAgent(BaseAgent):
         topic = self._resolve_topic(project_input)
         self.logger.info("Starting research for topic: %s", topic)
 
-        search_results = self._search.search(topic)
+        search_results = self._search.search(topic, max_results=self._SEARCH_RESULT_LIMIT)
         package = self._build_package(project_input, topic, search_results)
 
         self._write_outputs(project_dir, package)
